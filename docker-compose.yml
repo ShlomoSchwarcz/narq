@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: narquser
+      POSTGRES_PASSWORD: narqpass
+      POSTGRES_DB: narqdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://narquser:narqpass@db:5432/narqdb
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+      - '9229:9229'
+    volumes:
+      - ./backend:/app
+      # This volume mounts your host's backend folder into /app.
+      # The node_modules installed inside the container remain intact as 
+      # they are in a separate layer. If necessary, consider using .dockerignore 
+      # to avoid overwriting node_modules.
+    # Note: If node_modules is overwritten by the volume, you might need to 
+    # install them locally or mount node_modules as a named volume.
+
+  # admin:
+  #   build: ./admin
+  #   depends_on:
+  #     - api
+  #   ports:
+  #     - "8080:8080"
+
+volumes:
+  db_data:
