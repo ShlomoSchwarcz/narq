@@ -23,12 +23,12 @@ fastify.register(cors, {
     origin:'*',
   })
 
-  
+
 MessageListener.startMessageListener(repo);
 
 // async function load() {
 //     for (let i=0; i<120; i++) {
-//         await repo.createQueue('test ' + i);
+//         await repo.putMessage(12, {msg: 'test message ' + i});
 //     }
 // }
 

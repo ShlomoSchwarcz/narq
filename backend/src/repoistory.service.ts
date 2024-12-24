@@ -71,10 +71,14 @@ export class QueueRepository {
     }
   }
 
-  async searchMessages(queueId: number, criteria: { state?: string; group_id?: string; priority?: number }): Promise<Message[]> {
-    const conditions: string[] = ['queue_id = $1'];
-    const values: any[] = [queueId];
-    let idx = 2;
+  async searchMessages(queueId: number, criteria: { state?: string; group_id?: string; priority?: number, page?: number, limit?: number }): Promise<{rows: Message[], totalCount: number}> {
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+    if (queueId > -1) {
+      conditions.push(` queue_id = $${idx++}`);
+      values.push(queueId);
+    }
 
     if (criteria.state) {
       conditions.push(`state = $${idx++}`);
@@ -91,14 +95,22 @@ export class QueueRepository {
       values.push(criteria.priority);
     }
 
+    const where = conditions?.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ' ';
+    const offset = (criteria.page - 1) * criteria.limit;
+    const paging = criteria.limit ? ` limit ${criteria.limit} OFFSET ${offset}` : '';
     const sql = `
       SELECT * FROM messages
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY created_at ASC
+      LEFT JOIN queues on messages.queue_id = queues.id
+      ${where}
+      ORDER BY messages.created_at ASC
+      ${paging}
     `;
 
     const result = await this.pool.query(sql, values);
-    return result.rows;
+
+    const countResult = await this.pool.query(`SELECT COUNT(*) AS total FROM messages ${where}`, values);
+    const totalCount = parseInt(countResult.rows[0].total, 10);
+    return { rows: result.rows, totalCount: totalCount };
   }
 
   async acknowledgeMessage(messageId: number): Promise<boolean> {

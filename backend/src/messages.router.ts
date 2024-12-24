@@ -14,6 +14,8 @@ interface SearchQuery {
   state?: string;
   group_id?: string;
   priority?: string;
+  page?: number,
+  limit?: number
 }
 
 const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fastify, opts) => {
@@ -102,14 +104,31 @@ const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fast
   // Example query: /queues/1/messages?state=pending&group_id=abc&priority=10
   fastify.get<{ Params: { queueId: string }, Querystring: SearchQuery }>('/queues/:queueId/messages', async (request, reply) => {
     const queueId = parseInt(request.params.queueId, 10);
-    const { state, group_id, priority } = request.query;
+    const { state, group_id, priority, page, limit } = request.query;
 
-    const criteria: { state?: string; group_id?: string; priority?: number } = {};
+    const criteria: { state?: string; group_id?: string; priority?: number, page?: number, limit?: number } = {};
     if (state) criteria.state = state;
     if (group_id) criteria.group_id = group_id;
     if (priority) criteria.priority = parseInt(priority, 10);
+    criteria.page = page;
+    criteria.limit = limit;
 
     const messages = await repo.searchMessages(queueId, criteria);
+    return messages;
+  });
+
+
+  fastify.get<{ Params: { queueId: string }, Querystring: SearchQuery }>('/messages', async (request, reply) => {
+    const { state, group_id, priority, page, limit } = request.query;
+
+    const criteria: { state?: string; group_id?: string; priority?: number, page?: number, limit?: number } = {};
+    if (state) criteria.state = state;
+    if (group_id) criteria.group_id = group_id;
+    if (priority) criteria.priority = parseInt(priority, 10);
+    criteria.page = page;
+    criteria.limit = limit;
+
+    const messages = await repo.searchMessages(-1, criteria);
     return messages;
   });
 };

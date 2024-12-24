@@ -3,6 +3,7 @@ import { getQueuesPaginated } from '../services/queueService';
 import { DataGrid, GridColDef, GridSortModel } from '@mui/x-data-grid';
 import { Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
+import { Link } from 'react-router-dom';
 
 interface Queue {
   id: number;
@@ -48,10 +49,21 @@ export default function QueuesPage() {
     };
   }, [paginationModel.page, paginationModel.pageSize, sortModel]);
 
+  const dateFormat = 'DD-MM-YYYY HH:mm:ss';
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
-    { field: 'name', headerName: 'Name', width: 200 },
-    // {
+    {
+      field: 'name',
+      headerName: 'Name',
+      width: 200,
+      renderCell: (params) => (
+        <Link
+          to={`/queues/${params.row.id}/messages`}
+        >
+          {params.value}
+        </Link>
+      ),
+    },    // {
     //   field: 'config',
     //   headerName: 'Config',
     //   width: 300,
@@ -65,19 +77,30 @@ export default function QueuesPage() {
       field: 'created_at',
       headerName: 'Created At',
       width: 180,
-      valueFormatter: (params) => dayjs(params as string).format('YYYY-MM-DD HH:mm:ss'),
+      valueFormatter: (params) => dayjs(params as string).format(dateFormat),
     },
     {
       field: 'updated_at',
       headerName: 'Updated At',
       width: 180,
-      valueFormatter: (params) => dayjs(params as string).format('YYYY-MM-DD HH:mm:ss'),
+      valueFormatter: (params) => dayjs(params as string).format(dateFormat),
     },
     { field: 'messages_count', headerName: 'Messages', width: 120, type: 'number' },
   ];
   
   return (
-    <Box sx={{ height: 600, width: '100%', maxWidth: '1200px', mx: 'auto', p: 2, overflow: 'hidden' }}>
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
+      }}
+    >
+
+      <Typography variant="h4" gutterBottom>
+        List of Queues
+      </Typography>
       <DataGrid
         rows={rows}
         columns={columns}
