@@ -38,9 +38,26 @@ const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fast
   });
 
   // GET /queues/:queueId/messages/next - Get the next message from a queue
-  fastify.get<{ Params: { queueId: string } }>('/queues/:queueId/messages/next', async (request, reply) => {
+  fastify.get<{ Params: { queueId: string }, Querystring: {delete?: boolean} }>('/queues/:queueId/messages/next', async (request, reply) => {
     const queueId = parseInt(request.params.queueId, 10);
     const message = await repo.getMessage(queueId);
+    if (request.query.delete) {
+      await repo.deleteMessage(message.id);
+    }
+    if (!message) {
+      return reply.status(404).send({ error: 'No available messages' });
+    }
+    return message;
+  });
+
+  // GET /queues/:queueId/:groupId/messages/next - Get the next message from a queue
+  fastify.get<{ Params: { queueId: string, groupId: string }, Querystring: {delete?: boolean}  }>('/queues/:queueId/:groupId/messages/next', async (request, reply) => {
+    const queueId = parseInt(request.params.queueId, 10);
+    const groupId = parseInt(request.params.groupId, 10);
+    const message = await repo.getMessage(queueId, groupId);
+    if (request.query.delete) {
+      await repo.deleteMessage(message.id);
+    }
     if (!message) {
       return reply.status(404).send({ error: 'No available messages' });
     }
@@ -131,6 +148,21 @@ const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fast
     const messages = await repo.searchMessages(-1, criteria);
     return messages;
   });
+
+  fastify.delete('/messages/bulk', async (request, reply) => {
+    const { ids } = request.body as { ids: number[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return reply.status(400).send({ error: 'No IDs provided' });
+    }
+
+    try {
+      const deletedCount = await repo.deleteMessages(ids);
+      return { success: true, deletedCount };
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.status(500).send({ error: 'Failed to delete messages' });
+    }
+  });  
 };
 
 export default messageRoutes;

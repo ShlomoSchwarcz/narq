@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getQueuesPaginated } from '../services/queueService';
-import { DataGrid, GridColDef, GridSortModel } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
 import { Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 import { Link } from 'react-router-dom';
@@ -63,16 +63,7 @@ export default function QueuesPage() {
           {params.value}
         </Link>
       ),
-    },    // {
-    //   field: 'config',
-    //   headerName: 'Config',
-    //   width: 300,
-    //   renderCell: (params) => (
-    //     <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-    //       {JSON.stringify(params.value, null, 2)}
-    //     </pre>
-    //   ),
-    // },
+    },
     {
       field: 'created_at',
       headerName: 'Created At',
@@ -85,7 +76,8 @@ export default function QueuesPage() {
       width: 180,
       valueFormatter: (params) => dayjs(params as string).format(dateFormat),
     },
-    { field: 'messages_count', headerName: 'Messages', width: 120, type: 'number' },
+    { field: 'messages_count', headerName: 'Pending', width: 120, type: 'number' },
+    { field: 'messages_progress', headerName: 'In Progress', width: 120, type: 'number' },
   ];
   
   return (

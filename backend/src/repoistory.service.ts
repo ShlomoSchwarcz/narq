@@ -32,13 +32,12 @@ export class QueueRepository {
   }
 
 
-  async getMessage(queueId: number): Promise<Message | null> {
-    // Begin a transaction if your code structure allows it.
-    // If using pg.Pool, you might do:
+  async getMessage(queueId: number, groupId?: number): Promise<Message | null> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
   
+      const groupCond = groupId ? ` AND group_id = ${groupId} ` : '';
       const result = await client.query(
         `
         WITH next_msg AS (
@@ -47,6 +46,7 @@ export class QueueRepository {
           WHERE queue_id = $1
             AND state = 'pending'
             AND ready_at <= NOW()
+            ${groupCond}
           ORDER BY priority ASC, created_at ASC
           LIMIT 1
           FOR UPDATE SKIP LOCKED
@@ -99,7 +99,7 @@ export class QueueRepository {
     const offset = (criteria.page - 1) * criteria.limit;
     const paging = criteria.limit ? ` limit ${criteria.limit} OFFSET ${offset}` : '';
     const sql = `
-      SELECT * FROM messages
+      SELECT messages.id, messages.created_at, messages.updated_at, messages.state, messages.content, queues.name FROM messages
       LEFT JOIN queues on messages.queue_id = queues.id
       ${where}
       ORDER BY messages.created_at ASC
@@ -296,7 +296,8 @@ export class QueueRepository {
              q.config,
              q.created_at,
              q.updated_at,
-             COUNT(m.id) AS messages_count
+             COUNT(CASE WHEN m.state='pending' THEN 1 END) AS messages_count,
+             COUNT(CASE WHEN m.state='in_progress' THEN 1 END) AS messages_progress
       FROM queues q
       LEFT JOIN messages m ON m.queue_id = q.id
       GROUP BY q.id, q.name, q.config, q.created_at, q.updated_at
@@ -312,31 +313,18 @@ export class QueueRepository {
     return { rows: rowsResult.rows, totalCount };
   }
   
-
-  // async getQueuesPaginated(page: number, limit: number, sortField?: string, sortOrder?: string): Promise<{ rows: any[]; totalCount: number }> {
-  //   const offset = (page - 1) * limit;
+  async deleteMessages(ids: number[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    
+    // Convert array to a Postgres array parameter
+    const result = await this.pool.query(
+      `DELETE FROM messages
+       WHERE id = ANY($1)
+      `,
+      [ids]
+    );
   
-
-  //   const orderBy = (sortField && sortOrder) ? ` ORDER BY ${sortField} ${sortOrder} ` : '';
-  //   // Query to get the rows
-  //   const rowsResult = await this.pool.query(
-  //     `SELECT *, COUNT(m.id) as messageCount FROM queues
-  //      ${orderBy}
-  //      LEFT JOIN messages m ON messages.queue_id = queues.id
-  //      GROUP BY queue.id
-  //      LIMIT $1 OFFSET $2`,
-  //     [limit, offset]
-  //   );
-  
-  //   // Query to get the total count of queues
-  //   const countResult = await this.pool.query(`SELECT COUNT(*) AS total FROM queues`);
-  
-  //   const totalCount = parseInt(countResult.rows[0].total, 10);
-  
-  //   return {
-  //     rows: rowsResult.rows,
-  //     totalCount
-  //   };
-  // }  
+    return result.rowCount; // number of rows deleted
+  }
 
 }

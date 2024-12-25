@@ -37,3 +37,9 @@ export async function getAllMessagesPaginated(
   const res = await axios.get(`${API_BASE}/messages`, { params });
   return res.data;
 }
+
+export async function deleteMessages(ids: number[]): Promise<void> {
+  await axios.delete(`${API_BASE}/messages/bulk`, {
+    data: { ids },
+  });
+}

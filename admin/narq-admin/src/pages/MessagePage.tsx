@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'; // to read :queueId
 import { DataGrid, GridColDef, GridSortModel, GridRowSelectionModel, GridSortDirection } from '@mui/x-data-grid';
 import { Box, Typography, Button, Stack } from '@mui/material';
 import dayjs from 'dayjs';
-import { getMessagesPaginated } from '../services/messageService';
+import { deleteMessages, getMessagesPaginated } from '../services/messageService';
 
 interface Message {
   id: number;
@@ -72,6 +72,36 @@ export default function MessagesPage() {
     return () => { isActive = false; };
   }, [qId, paginationModel, sortModel]);
 
+  const handleDelete = async () => {
+    if (rowSelectionModel.length === 0) return;
+    const messageIds = rowSelectionModel.map((id) => Number(id));
+    
+    try {
+      await deleteMessages(messageIds);
+      await fetchMessages();
+    } catch (err) {
+      console.error('Error deleting messages:', err);
+    }
+  };
+
+  const fetchMessages = async () => {
+    setLoading(true);
+    try {
+      const page = paginationModel.page + 1; // DataGrid is zero-based
+      const limit = paginationModel.pageSize;
+      const sortField = sortModel[0]?.field;
+      const sortOrder = sortModel[0]?.sort as 'asc' | 'desc' | undefined;
+
+      const data = await getMessagesPaginated(qId, page, limit, sortField, sortOrder);
+      setRows(data.rows);
+      setRowCount(data.totalCount);
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Columns
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70, sortable: true },
@@ -104,13 +134,6 @@ export default function MessagesPage() {
       valueFormatter: (params) => dayjs(params as string).format('YYYY-MM-DD HH:mm:ss'),
     },
   ];
-
-  // Handler for Delete and Edit
-  const handleDelete = () => {
-    // rowSelectionModel has the IDs of selected rows
-    // Implement your delete logic here
-    console.log('Delete messages with IDs:', rowSelectionModel);
-  };
 
   const handleEdit = () => {
     // For editing, you might open a modal to edit the content of each selected message.
