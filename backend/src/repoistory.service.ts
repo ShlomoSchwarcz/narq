@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { Message, Queue } from './types';
+import { Message, MessageStatus, Queue } from './types';
 
 export class QueueRepository {
   private pool: Pool;
@@ -44,7 +44,7 @@ export class QueueRepository {
           SELECT id
           FROM messages
           WHERE queue_id = $1
-            AND state = 'pending'
+            AND state = '${MessageStatus.pending}'
             AND ready_at <= NOW()
             ${groupCond}
           ORDER BY priority ASC, created_at ASC
@@ -52,7 +52,7 @@ export class QueueRepository {
           FOR UPDATE SKIP LOCKED
         )
         UPDATE messages
-        SET state = 'in_progress', updated_at = NOW()
+        SET state = '${MessageStatus.in_progress}', updated_at = NOW(), process_start = NOW()
         FROM next_msg
         WHERE messages.id = next_msg.id
         RETURNING messages.*;
@@ -156,7 +156,7 @@ export class QueueRepository {
 
       const updateResult = await client.query(
         `UPDATE messages
-         SET state = 'pending', updated_at = NOW(), ready_at = NOW(), attempts = $2
+         SET state = '${MessageStatus.pending}', updated_at = NOW(), ready_at = NOW(), attempts = $2
          WHERE id = $1
          RETURNING *`,
         [messageId, newAttempts]
@@ -192,7 +192,7 @@ export class QueueRepository {
 
       const updateResult = await client.query(
         `UPDATE messages
-         SET state = 'dead_letter', updated_at = NOW()
+         SET state = '${MessageStatus.dead_letter}', updated_at = NOW()
          WHERE id = $1
          RETURNING *`,
         [messageId]
@@ -297,7 +297,8 @@ export class QueueRepository {
              q.created_at,
              q.updated_at,
              COUNT(CASE WHEN m.state='pending' THEN 1 END) AS messages_count,
-             COUNT(CASE WHEN m.state='in_progress' THEN 1 END) AS messages_progress
+             COUNT(CASE WHEN m.state='in_progress' THEN 1 END) AS messages_progress,
+             COUNT(CASE WHEN m.state='dead_letter' THEN 1 END) AS messages_dead
       FROM queues q
       LEFT JOIN messages m ON m.queue_id = q.id
       GROUP BY q.id, q.name, q.config, q.created_at, q.updated_at

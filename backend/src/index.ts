@@ -5,6 +5,7 @@ import queueRoutes from './queues.router';
 import messageRoutes from './messages.router';
 import { MessageListener } from './polling.service';
 import cors from '@fastify/cors'
+import { TimerThread } from './timer.thread';
 
 const fastify = Fastify({ logger: true });
 
@@ -43,3 +44,12 @@ fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
   fastify.log.info(`Server listening at ${address}`);
 });
 
+async function timerTasks() {
+  const timerThread = new TimerThread(pool);
+  while (true) {
+    console.log('Running timer thread');
+    await timerThread.run();
+  }
+}
+
+timerTasks();

@@ -78,6 +78,7 @@ export default function QueuesPage() {
     },
     { field: 'messages_count', headerName: 'Pending', width: 120, type: 'number' },
     { field: 'messages_progress', headerName: 'In Progress', width: 120, type: 'number' },
+    { field: 'messages_dead', headerName: 'Dead Letter', width: 120, type: 'number' },
   ];
   
   return (

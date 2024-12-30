@@ -21,6 +21,9 @@ services:
     ports:
       - "3000:3000"
       - '9229:9229'
+    expose:
+      - 9229
+      - 3000
     volumes:
       - ./backend:/app
       # This volume mounts your host's backend folder into /app.

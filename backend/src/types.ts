@@ -21,4 +21,11 @@ export interface Message {
     updated_at?: Date;
   }
 
+  export enum MessageStatus {
+    pending = 'pending',
+    in_progress = 'in_progress',
+    delayed = 'delayed',
+    dead_letter = 'dead_letter'
+  }
+
   export const MAX_NUMBER_OF_ROWS = 110;
