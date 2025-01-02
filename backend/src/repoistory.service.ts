@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { Message, MessageStatus, Queue } from './types';
+import { SearchQuery } from './messages.router';
 
 export class QueueRepository {
   private pool: Pool;
@@ -19,14 +20,15 @@ export class QueueRepository {
       priority = 0,
       group_id = null,
       ready_at = new Date(),
-      max_attempts = 5,
+      max_attempts = 3,
       delay_after_processing = 0
     } = options;
 
+    const state = ready_at > new Date() ? MessageStatus.delayed : MessageStatus.pending;
     const result = await this.pool.query(
-      `INSERT INTO messages (queue_id, content, priority, group_id, ready_at, max_attempts, delay_after_processing)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [queueId, content, priority, group_id, ready_at, max_attempts, delay_after_processing]
+      `INSERT INTO messages (queue_id, content, priority, group_id, ready_at, max_attempts, delay_after_processing, state)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [queueId, content, priority, group_id, ready_at, max_attempts, delay_after_processing, state]
     );
     return result.rows[0];
   }
@@ -71,7 +73,7 @@ export class QueueRepository {
     }
   }
 
-  async searchMessages(queueId: number, criteria: { state?: string; group_id?: string; priority?: number, page?: number, limit?: number }): Promise<{rows: Message[], totalCount: number}> {
+  async searchMessages(queueId: number, criteria: SearchQuery): Promise<{rows: Message[], totalCount: number}> {
     const conditions: string[] = [];
     const values: any[] = [];
     let idx = 1;
@@ -79,6 +81,8 @@ export class QueueRepository {
       conditions.push(` queue_id = $${idx++}`);
       values.push(queueId);
     }
+
+    const orderBy = (criteria.sortField && criteria.sortOrder) ? ` ORDER BY ${criteria.sortField} ${criteria.sortOrder} ` : ' ORDER BY messages.created_at ASC ';
 
     if (criteria.state) {
       conditions.push(`state = $${idx++}`);
@@ -92,7 +96,7 @@ export class QueueRepository {
 
     if (criteria.priority !== undefined) {
       conditions.push(`priority = $${idx++}`);
-      values.push(criteria.priority);
+      values.push(parseInt(criteria.priority));
     }
 
     const where = conditions?.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ' ';
@@ -102,7 +106,7 @@ export class QueueRepository {
       SELECT messages.id, messages.created_at, messages.updated_at, messages.state, messages.content, queues.name FROM messages
       LEFT JOIN queues on messages.queue_id = queues.id
       ${where}
-      ORDER BY messages.created_at ASC
+      ${orderBy}
       ${paging}
     `;
 
@@ -298,7 +302,8 @@ export class QueueRepository {
              q.updated_at,
              COUNT(CASE WHEN m.state='pending' THEN 1 END) AS messages_count,
              COUNT(CASE WHEN m.state='in_progress' THEN 1 END) AS messages_progress,
-             COUNT(CASE WHEN m.state='dead_letter' THEN 1 END) AS messages_dead
+             COUNT(CASE WHEN m.state='dead_letter' THEN 1 END) AS messages_dead,
+             COUNT(CASE WHEN m.state='delayed' THEN 1 END) AS messages_delayed
       FROM queues q
       LEFT JOIN messages m ON m.queue_id = q.id
       GROUP BY q.id, q.name, q.config, q.created_at, q.updated_at

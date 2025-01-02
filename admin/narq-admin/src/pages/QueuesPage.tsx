@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getQueuesPaginated } from '../services/queueService';
-import { DataGrid, GridColDef, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridSortModel } from '@mui/x-data-grid';
 import { Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 import { Link } from 'react-router-dom';
@@ -78,6 +78,7 @@ export default function QueuesPage() {
     },
     { field: 'messages_count', headerName: 'Pending', width: 120, type: 'number' },
     { field: 'messages_progress', headerName: 'In Progress', width: 120, type: 'number' },
+    { field: 'messages_delayed', headerName: 'Delayed', width: 120, type: 'number' },
     { field: 'messages_dead', headerName: 'Dead Letter', width: 120, type: 'number' },
   ];
   
