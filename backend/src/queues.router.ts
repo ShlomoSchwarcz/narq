@@ -51,6 +51,36 @@ const queueRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fastif
     return queue;
   });
 
+  fastify.delete('/queues', async (request, reply) => {
+    const { ids } = request.body as { ids: number[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return reply.status(400).send({ error: 'No IDs provided' });
+    }
+
+    try {
+      const deletedCount = await repo.deleteQueues(ids);
+      return { success: true, deletedCount };
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.status(500).send({ error: 'Failed to delete messages' });
+    }
+  });
+
+  fastify.post('/queues/purge', async (request, reply) => {
+    const { ids } = request.body as { ids: number[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return reply.status(400).send({ error: 'No IDs provided' });
+    }
+
+    try {
+      const purgeCount = await repo.purgeQueues(ids);
+      return { success: true, purgeCount };
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.status(500).send({ error: 'Failed to delete messages' });
+    }
+  });  
+
 };
 
 export default queueRoutes;

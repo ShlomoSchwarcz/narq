@@ -333,4 +333,25 @@ export class QueueRepository {
     return result.rowCount; // number of rows deleted
   }
 
+  async deleteQueues(ids: number[]): Promise<number> {
+    if (ids.length === 0) return 0;
+        const result = await this.pool.query(
+      `DELETE FROM queues
+       WHERE id = ANY($1)
+      `,
+      [ids]
+    );
+    return result.rowCount;
+  }
+
+  async purgeQueues(ids: number[]): Promise<number> {
+    if (ids.length === 0) return 0;
+        const result = await this.pool.query(
+      `DELETE FROM messages
+       WHERE queue_id = ANY($1)
+      `,
+      [ids]
+    );
+    return result.rowCount;
+  }
 }

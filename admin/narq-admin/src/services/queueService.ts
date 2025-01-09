@@ -35,3 +35,14 @@ export async function getMessagesForQueue(queueId: number, params: { state?: str
     return res.data;
   }
 
+  export async function deleteQueues(ids: number[]): Promise<void> {
+    await axios.delete(`${API_BASE}/queues`, {
+      data: { ids },
+    });
+  }
+
+  export async function purgeQueues(ids: number[]): Promise<void> {
+    await axios.post(`${API_BASE}/queues/purge`, {
+       ids,
+    });
+  }
