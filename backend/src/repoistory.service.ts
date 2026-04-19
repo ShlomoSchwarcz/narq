@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { Message, MessageStatus, Queue } from './types';
 import { SearchQuery } from './messages.router';
+import { AbstractQueueApi } from './Queue';
 
 export class QueueRepository {
   private pool: Pool;
@@ -35,42 +36,9 @@ export class QueueRepository {
 
 
   async getMessage(queueId: number, groupId?: number): Promise<Message | null> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-  
-      const groupCond = groupId ? ` AND group_id = ${groupId} ` : '';
-      const result = await client.query(
-        `
-        WITH next_msg AS (
-          SELECT id
-          FROM messages
-          WHERE queue_id = $1
-            AND state = '${MessageStatus.pending}'
-            AND ready_at <= NOW()
-            ${groupCond}
-          ORDER BY priority ASC, created_at ASC
-          LIMIT 1
-          FOR UPDATE SKIP LOCKED
-        )
-        UPDATE messages
-        SET state = '${MessageStatus.in_progress}', updated_at = NOW(), process_start = NOW()
-        FROM next_msg
-        WHERE messages.id = next_msg.id
-        RETURNING messages.*;
-        `,
-        [queueId]
-      );
-  
-      await client.query('COMMIT');
-  
-      return result.rows[0] || null;
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    const queue = await this.getQueueById(queueId);
+    const queueApi = AbstractQueueApi.getInstance(this.pool, queue.type);
+    return await queueApi.getMessage(queueId, groupId);
   }
 
   async searchMessages(queueId: number, criteria: SearchQuery): Promise<{rows: Message[], totalCount: number}> {
@@ -287,6 +255,14 @@ export class QueueRepository {
     return result.rows[0] || null;
   }
 
+  async getQueueById(id: number): Promise<Queue | null> {
+    const result = await this.pool.query(
+      `SELECT * FROM queues WHERE id = $1`,
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
   async getQueuesPaginated(page: number, limit: number, sortField?: string, sortOrder?: 'asc' | 'desc') {
     const offset = (page - 1) * limit;
   
@@ -340,6 +316,17 @@ export class QueueRepository {
        WHERE id = ANY($1)
       `,
       [ids]
+    );
+    return result.rowCount;
+  }
+
+  async deleteQueuesByName(name: string): Promise<number> {
+    if (!name) return 0;
+        const result = await this.pool.query(
+      `DELETE FROM queues
+       WHERE name = $1
+      `,
+      [name]
     );
     return result.rowCount;
   }

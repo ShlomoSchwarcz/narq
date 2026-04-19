@@ -23,6 +23,10 @@ export interface SearchQuery {
 const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fastify, opts) => {
   const { repo } = opts;
 
+    fastify.get('/health', async (request, reply) => {
+      return {status: 'ok'};
+    });
+
   // POST /queues/:queueId/messages - Put a message in a queue
   fastify.post<{ Params: { queueId: string }, Body: PutMessageBody }>('/queues/:queueId/messages', async (request, reply) => {
     const queueId = parseInt(request.params.queueId, 10);
