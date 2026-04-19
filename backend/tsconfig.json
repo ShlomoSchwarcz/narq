@@ -35,7 +35,7 @@
       "forceConsistentCasingInFileNames": false,
       "noFallthroughCasesInSwitch": false,
       "resolveJsonModule": true,
-      "types": ["node"],
+      "types": ["node", "@types/jest"],
     },
     "include": ["src/"],
   }

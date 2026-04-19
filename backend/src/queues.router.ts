@@ -66,6 +66,17 @@ const queueRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fastif
     }
   });
 
+  fastify.delete('/queues/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    try {
+      const deletedCount = await repo.deleteQueuesByName(name);
+      return { success: true, deletedCount };
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.status(500).send({ error: 'Failed to delete messages' });
+    }
+  });
+
   fastify.post('/queues/purge', async (request, reply) => {
     const { ids } = request.body as { ids: number[] };
     if (!Array.isArray(ids) || ids.length === 0) {

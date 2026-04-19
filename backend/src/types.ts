@@ -19,6 +19,7 @@ export interface Message {
     config?: any;
     created_at?: Date;
     updated_at?: Date;
+    type?: string;
   }
 
   export enum MessageStatus {
@@ -26,6 +27,13 @@ export interface Message {
     in_progress = 'in_progress',
     delayed = 'delayed',
     dead_letter = 'dead_letter'
+  }
+
+  export enum QueueType {
+    unlimited = 'unlimited',
+    fifo = 'fifo',
+    metronome = 'metronome',
+    throttling = 'throttling'
   }
 
   export const MAX_NUMBER_OF_ROWS = 110;
