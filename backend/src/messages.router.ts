@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { QueueRepository } from './repoistory.service';
+import { MessageListener } from './polling.service';
 
 export interface PutMessageBody {
   content: any;
@@ -20,8 +21,8 @@ export interface SearchQuery {
   sortOrder?: string
 }
 
-const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fastify, opts) => {
-  const { repo } = opts;
+const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository; messageListener: MessageListener }> = async (fastify, opts) => {
+  const { repo, messageListener } = opts;
 
     fastify.get('/health', async (request, reply) => {
       return {status: 'ok'};
@@ -44,30 +45,37 @@ const messageRoutes: FastifyPluginAsync<{ repo: QueueRepository }> = async (fast
   });
 
   // GET /queues/:queueId/messages/next - Get the next message from a queue
-  fastify.get<{ Params: { queueId: string }, Querystring: {delete?: boolean} }>('/queues/:queueId/messages/next', async (request, reply) => {
+  // Add ?waitTimeMs=<ms> to long-poll until a message is available or the timeout expires
+  fastify.get<{ Params: { queueId: string }, Querystring: { delete?: boolean; waitTimeMs?: number } }>('/queues/:queueId/messages/next', async (request, reply) => {
     const queueId = parseInt(request.params.queueId, 10);
     const message = await repo.getMessage(queueId);
-    if (request.query.delete) {
-      await repo.deleteMessage(message.id);
+    if (message) {
+      if (request.query.delete) await repo.deleteMessage(message.id);
+      return message;
     }
-    if (!message) {
-      return reply.status(404).send({ error: 'No available messages' });
+    const waitTimeMs = request.query.waitTimeMs;
+    if (waitTimeMs && waitTimeMs > 0) {
+      messageListener.storeLongPollRequest(queueId, reply, waitTimeMs);
+      return reply; // keep connection open — storeLongPollRequest will send the response
     }
-    return message;
+    return reply.status(404).send({ error: 'No available messages' });
   });
 
   // GET /queues/:queueId/:groupId/messages/next - Get the next message from a queue
-  fastify.get<{ Params: { queueId: string, groupId: string }, Querystring: {delete?: boolean}  }>('/queues/:queueId/:groupId/messages/next', async (request, reply) => {
+  fastify.get<{ Params: { queueId: string, groupId: string }, Querystring: { delete?: boolean; waitTimeMs?: number } }>('/queues/:queueId/:groupId/messages/next', async (request, reply) => {
     const queueId = parseInt(request.params.queueId, 10);
-    const groupId = parseInt(request.params.groupId, 10);
+    const groupId = request.params.groupId;
     const message = await repo.getMessage(queueId, groupId);
-    if (request.query.delete) {
-      await repo.deleteMessage(message.id);
+    if (message) {
+      if (request.query.delete) await repo.deleteMessage(message.id);
+      return message;
     }
-    if (!message) {
-      return reply.status(404).send({ error: 'No available messages' });
+    const waitTimeMs = request.query.waitTimeMs;
+    if (waitTimeMs && waitTimeMs > 0) {
+      messageListener.storeLongPollRequest(queueId, reply, waitTimeMs);
+      return reply;
     }
-    return message;
+    return reply.status(404).send({ error: 'No available messages' });
   });
 
   // DELETE /messages/:messageId - Delete a pending message

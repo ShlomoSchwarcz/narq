@@ -1,7 +1,7 @@
 import { GridSortDirection } from '@mui/x-data-grid';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:3000'; //process?.env?.REACT_APP_API_BASE || 'http://localhost:3000';
+const API_BASE = 'http://localhost:3001'; //process?.env?.REACT_APP_API_BASE || 'http://localhost:3001';
 
 export async function getMessagesPaginated(
   queueId: number,

@@ -5,7 +5,7 @@ import { Message, MessageStatus, QueueType } from "./types";
 
 export abstract class AbstractQueueApi {
     constructor(protected readonly pool: Pool) { }
-    abstract getMessage(queueId: number, groupId?: number): Promise<Message | null>;
+    abstract getMessage(queueId: number, groupId?: string): Promise<Message | null>;
     static getInstance(pool: Pool, queueType: string) {
         switch (queueType) {
             case QueueType.fifo:
@@ -21,12 +21,12 @@ export abstract class AbstractQueueApi {
 }
 
 export class FifoQueue extends AbstractQueueApi {
-    async getMessage(queueId: number, groupId?: number): Promise<Message | null> {
+    async getMessage(queueId: number, groupId?: string): Promise<Message | null> {
         const client = await this.pool.connect();
         try {
             await client.query('BEGIN');
 
-            const groupCond = groupId ? ` AND group_id = ${groupId} ` : '';
+            const groupCond = groupId ? ` AND group_id = $2 ` : '';
             const result = await client.query(
                 `
                 WITH next_msg AS (
@@ -49,7 +49,7 @@ export class FifoQueue extends AbstractQueueApi {
                 WHERE messages.id = next_msg.id
                 RETURNING messages.*;
                 `,
-                [queueId]
+                groupId ? [queueId, groupId] : [queueId]
             );
 
             await client.query('COMMIT');
@@ -64,12 +64,12 @@ export class FifoQueue extends AbstractQueueApi {
 }
 
 export class UnlimitedQueue extends AbstractQueueApi {
-    async getMessage(queueId: number, groupId?: number): Promise<Message | null> {
+    async getMessage(queueId: number, groupId?: string): Promise<Message | null> {
         const client = await this.pool.connect();
         try {
             await client.query('BEGIN');
 
-            const groupCond = groupId ? ` AND group_id = ${groupId} ` : '';
+            const groupCond = groupId ? ` AND group_id = $2 ` : '';
             const result = await client.query(
                 `
                 WITH next_msg AS (
@@ -89,7 +89,7 @@ export class UnlimitedQueue extends AbstractQueueApi {
                 WHERE messages.id = next_msg.id
                 RETURNING messages.*;
                 `,
-                [queueId]
+                groupId ? [queueId, groupId] : [queueId]
             );
 
             await client.query('COMMIT');

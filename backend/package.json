@@ -7,7 +7,8 @@
         "build": "tsc",
         "start": "node dist/index.js --inspect --debug=0.0.0.0:9229",
         "dev": "nodemon --inspect=0.0.0.0:9229 --watch src --ext ts --exec \"ts-node src/index.ts \"",
-        "debug": "node --inspect=0.0.0.0:9229 -r source-map-support/register dist/index.js "
+        "debug": "node --inspect=0.0.0.0:9229 -r source-map-support/register dist/index.js ",
+        "test": "jest"
     },
     "dependencies": {
         "@fastify/cors": "^10.0.1",
@@ -24,6 +25,7 @@
         "jest": "^29.7.0",
         "nodemon": "^3.0.0",
         "supertest": "^7.0.0",
+        "ts-jest": "^29.4.9",
         "ts-node": "^10.9.1",
         "typescript": "^5.0.0"
     }
