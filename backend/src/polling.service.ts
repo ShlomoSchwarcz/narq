@@ -7,9 +7,10 @@ export class MessageListener {
     constructor(private readonly repo: QueueRepository) {
     }
 
-    public static startMessageListener(repo: QueueRepository) {
+    public static startMessageListener(repo: QueueRepository): MessageListener {
         const listner = new MessageListener(repo);
         listner.init();
+        return listner;
     }
 
     public static MAX_WAITING_TIME = 2 * 60 * 60;
@@ -35,39 +36,34 @@ export class MessageListener {
     }
 
     storeLongPollRequest(queueId: number, reply: FastifyReply, timeoutMs: number = 120000) {
-        // Create a timeout to handle the case where no message arrives in time
         const timeoutId = setTimeout(() => {
-          // Timeout expired, remove request and respond with no messages
-          const idx = this.waitingRequests[queueId]?.findIndex(r => r.reply === reply);
-          if (idx !== undefined && idx >= 0) {
-            this.waitingRequests[queueId].splice(idx, 1);
-            if (this.waitingRequests[queueId].length === 0) {
-              delete this.waitingRequests[queueId]; // clean up empty arrays
+          const queue = this.waitingRequests.get(queueId);
+          if (queue) {
+            const idx = queue.findIndex(r => r.reply === reply);
+            if (idx >= 0) {
+              queue.splice(idx, 1);
+              if (queue.length === 0) this.waitingRequests.delete(queueId);
             }
           }
-          reply.send({ error: 'No messages' });
+          reply.status(204).send();
         }, timeoutMs);
-      
-        if (!this.waitingRequests[queueId]) {
-            this.waitingRequests[queueId] = [];
-        }
-        this.waitingRequests[queueId].push({ reply, timeoutId });
-      }
 
-      async fulfillLongPollRequest(queueId: number, repo: QueueRepository) {
-        const requests = this.waitingRequests[queueId];
+        if (!this.waitingRequests.has(queueId)) {
+          this.waitingRequests.set(queueId, []);
+        }
+        this.waitingRequests.get(queueId)!.push({ reply, timeout: timeoutId });
+    }
+
+    async fulfillLongPollRequest(queueId: number, repo: QueueRepository) {
+        const requests = this.waitingRequests.get(queueId);
         if (!requests || requests.length === 0) return;
-      
-        // Attempt to fetch a message now that we know one is available.
+
         const message = await repo.getMessage(queueId);
         if (message) {
-          // Fulfill one waiting request
-          const { reply, timeoutId } = requests.shift()!;
-          clearTimeout(timeoutId);
+          const { reply, timeout } = requests.shift()!;
+          clearTimeout(timeout);
           reply.send(message);
-          if (requests.length === 0) {
-            delete this.waitingRequests[queueId];
-          }
+          if (requests.length === 0) this.waitingRequests.delete(queueId);
         }
     }
 }

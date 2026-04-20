@@ -35,7 +35,7 @@ export class QueueRepository {
   }
 
 
-  async getMessage(queueId: number, groupId?: number): Promise<Message | null> {
+  async getMessage(queueId: number, groupId?: string): Promise<Message | null> {
     const queue = await this.getQueueById(queueId);
     const queueApi = AbstractQueueApi.getInstance(this.pool, queue.type);
     return await queueApi.getMessage(queueId, groupId);

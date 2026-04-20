@@ -17,15 +17,14 @@ const pool = new Pool({
 // Create an instance of the repository
 const repo = new QueueRepository(pool);
 
+const messageListener = MessageListener.startMessageListener(repo);
+
 // Register routes with the repository as the option
 fastify.register(queueRoutes, { repo });
-fastify.register(messageRoutes, { repo });
+fastify.register(messageRoutes, { repo, messageListener });
 fastify.register(cors, {
     origin:'*',
   })
-
-
-MessageListener.startMessageListener(repo);
 
 // async function load() {
 //     for (let i=0; i<120; i++) {
@@ -36,7 +35,7 @@ MessageListener.startMessageListener(repo);
 // load();
 
 // Start the server
-fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
+fastify.listen({ port: 3001, host: '0.0.0.0' }, (err, address) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -47,7 +46,7 @@ fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
 async function timerTasks() {
   const timerThread = new TimerThread(pool);
   while (true) {
-    console.log('Running timer thread');
+    // console.log('Running timer thread');
     await timerThread.run();
   }
 }
