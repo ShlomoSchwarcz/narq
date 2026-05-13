@@ -13,5 +13,5 @@ RUN npm install --production
 COPY --from=builder /app/dist ./dist
 EXPOSE 3001
 # CMD ["node", "dist/index.js"]
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "prod"]
 # CMD ["npm", "run", "debug"]
