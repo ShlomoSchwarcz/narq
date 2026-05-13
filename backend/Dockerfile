@@ -26,6 +26,7 @@ RUN npm run build           # tsc now available
 
 FROM node:20-slim
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl wget && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 RUN npm ci --omit=dev       # production only
 COPY --from=builder /app/dist ./dist
