@@ -9,6 +9,7 @@ RUN npm run build
 # Serve stage
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache curl wget
 # Copy the build output from the previous stage
 COPY --from=build /app/build ./build
 # Install a simple static server
